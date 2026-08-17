@@ -1,7 +1,5 @@
 param(
     [Parameter(Mandatory = $true)]
-    [long]$Handle,
-    [Parameter(Mandatory = $true)]
     [int]$GridX,
     [Parameter(Mandatory = $true)]
     [int]$GridY,
@@ -17,46 +15,85 @@ Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 
-public class ClickApi {
-    [DllImport("user32.dll")]
-    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+public struct MOUSEINPUT {
+    public int dx;
+    public int dy;
+    public uint mouseData;
+    public uint dwFlags;
+    public uint time;
+    public IntPtr dwExtraInfo;
+}
+
+public struct INPUT {
+    public int type;
+    public MOUSEINPUT mi;
+}
+
+public class SendInputApi {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     [DllImport("user32.dll")]
-    public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
-
-    [DllImport("user32.dll")]
-    public static extern bool SetCursorPos(int X, int Y);
-
-    public struct POINT { public int X; public int Y; }
+    public static extern int GetSystemMetrics(int nIndex);
 }
 "@
 
-$WM_LBUTTONDOWN = 0x0201
-$WM_LBUTTONUP = 0x0202
-$MK_LBUTTON = [IntPtr]0x0001
+$MOUSEEVENTF_MOVE = 0x0001
+$MOUSEEVENTF_LEFTDOWN = 0x0002
+$MOUSEEVENTF_LEFTUP = 0x0004
+$MOUSEEVENTF_ABSOLUTE = 0x8000
+$MOUSEEVENTF_VIRTUALDESK = 0x4000
 
-$hwnd = [IntPtr]$Handle
+$SM_XVIRTUALSCREEN = 76
+$SM_YVIRTUALSCREEN = 77
+$SM_CXVIRTUALSCREEN = 78
+$SM_CYVIRTUALSCREEN = 79
+
+$vLeft = [SendInputApi]::GetSystemMetrics($SM_XVIRTUALSCREEN)
+$vTop = [SendInputApi]::GetSystemMetrics($SM_YVIRTUALSCREEN)
+$vWidth = [SendInputApi]::GetSystemMetrics($SM_CXVIRTUALSCREEN)
+$vHeight = [SendInputApi]::GetSystemMetrics($SM_CYVIRTUALSCREEN)
+
+$inputSize = [System.Runtime.InteropServices.Marshal]::SizeOf([Type][INPUT])
+
+function Send-Click([int]$x, [int]$y) {
+    $nx = [int]((($x - $vLeft) * 65536) / $vWidth)
+    $ny = [int]((($y - $vTop) * 65536) / $vHeight)
+
+    $moveFlags = $MOUSEEVENTF_MOVE -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
+    $downFlags = $MOUSEEVENTF_LEFTDOWN -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
+    $upFlags = $MOUSEEVENTF_LEFTUP -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
+
+    $move = New-Object INPUT
+    $move.type = 0
+    $move.mi.dx = $nx
+    $move.mi.dy = $ny
+    $move.mi.dwFlags = $moveFlags
+
+    $down = New-Object INPUT
+    $down.type = 0
+    $down.mi.dx = $nx
+    $down.mi.dy = $ny
+    $down.mi.dwFlags = $downFlags
+
+    $up = New-Object INPUT
+    $up.type = 0
+    $up.mi.dx = $nx
+    $up.mi.dy = $ny
+    $up.mi.dwFlags = $upFlags
+
+    [SendInputApi]::SendInput(1, @($move), $inputSize) | Out-Null
+    Start-Sleep -Milliseconds 30
+    [SendInputApi]::SendInput(1, @($down), $inputSize) | Out-Null
+    Start-Sleep -Milliseconds 50
+    [SendInputApi]::SendInput(1, @($up), $inputSize) | Out-Null
+}
 
 for ($row = 0; $row -lt $Rows; $row++) {
     for ($col = 0; $col -lt $Cols; $col++) {
-        $screenX = $GridX + ($col * $CellSize) + [int]($CellSize / 2)
-        $screenY = $GridY + ($row * $CellSize) + [int]($CellSize / 2)
-
-        [ClickApi]::SetCursorPos($screenX, $screenY) | Out-Null
-
-        $pt = New-Object ClickApi+POINT
-        $pt.X = $screenX
-        $pt.Y = $screenY
-        [ClickApi]::ScreenToClient($hwnd, [ref]$pt) | Out-Null
-
-        [int64]$packed = ((($pt.Y -band 0xFFFF) -shl 16) -bor ($pt.X -band 0xFFFF))
-        $packed = $packed -band 0xFFFFFFFF
-        $lParam = [IntPtr]$packed
-
-        Start-Sleep -Milliseconds 20
-        [ClickApi]::PostMessage($hwnd, $WM_LBUTTONDOWN, $MK_LBUTTON, $lParam) | Out-Null
-        Start-Sleep -Milliseconds 50
-        [ClickApi]::PostMessage($hwnd, $WM_LBUTTONUP, [IntPtr]0, $lParam) | Out-Null
+        $x = $GridX + ($col * $CellSize) + [int]($CellSize / 2)
+        $y = $GridY + ($row * $CellSize) + [int]($CellSize / 2)
+        Send-Click $x $y
     }
 }
 

@@ -67,7 +67,7 @@ function startAutomation() {
           isClicking = true;
           const bounds = gridWindow.getBounds();
           try {
-            await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+            await windowManager.clickGrid(bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
           } catch (error) {
             // ignore transient click errors; next cycle retries
           }
@@ -119,7 +119,7 @@ function startPointAutomation(point) {
         point.isClicking = true;
         const bounds = point.window.getBounds();
         try {
-          await windowManager.clickGrid(selectedTarget.handle, bounds, 1, 1, POINT_SIZE);
+          await windowManager.clickGrid(bounds, 1, 1, POINT_SIZE);
         } catch (error) {
           // ignore transient click errors; next cycle retries
         }
