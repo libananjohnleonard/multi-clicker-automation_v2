@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Multi Clicker Grid</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: transparent;
+    }
+    body {
+      -webkit-app-region: drag;
+      cursor: move;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(14, 20px);
+      grid-template-rows: repeat(8, 20px);
+      width: 280px;
+      height: 160px;
+    }
+    .cell {
+      border: 1px solid rgba(74, 144, 226, 0.6);
+      background: rgba(74, 144, 226, 0.08);
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="grid"></div>
+
+  <script src="grid.js"></script>
+</body>
+</html>
