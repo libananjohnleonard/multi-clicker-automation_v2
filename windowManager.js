@@ -96,12 +96,13 @@ function getWindowRect(handle) {
   });
 }
 
-function clickGrid(gridBounds, cols, rows, cellSize) {
+function clickGrid(handle, gridBounds, cols, rows, cellSize) {
   return new Promise((resolve, reject) => {
     execFile(
       'powershell.exe',
       [
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CLICK_SCRIPT_PATH,
+        '-Handle', String(handle),
         '-GridX', String(Math.round(gridBounds.x)),
         '-GridY', String(Math.round(gridBounds.y)),
         '-Cols', String(cols),

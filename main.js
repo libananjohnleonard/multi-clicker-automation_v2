@@ -67,7 +67,7 @@ function startAutomation() {
           isClicking = true;
           const bounds = gridWindow.getBounds();
           try {
-            await windowManager.clickGrid(bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+            await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
           } catch (error) {
             console.error('[grid click failed]', error);
           }
@@ -121,7 +121,7 @@ function startPointAutomation(point) {
         point.window.setIgnoreMouseEvents(true);
         console.log(`[point ${point.id} click] bounds=(${bounds.x},${bounds.y}) target center=(${Math.round(bounds.x + POINT_SIZE / 2)},${Math.round(bounds.y + POINT_SIZE / 2)})`);
         try {
-          const result = await windowManager.clickGrid(bounds, 1, 1, POINT_SIZE);
+          const result = await windowManager.clickGrid(selectedTarget.handle, bounds, 1, 1, POINT_SIZE);
           console.log(`[point ${point.id} click] result:`, result);
         } catch (error) {
           console.error(`[point ${point.id} click failed]`, error);

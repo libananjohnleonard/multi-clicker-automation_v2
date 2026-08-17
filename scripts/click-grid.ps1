@@ -1,5 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
+    [long]$Handle,
+    [Parameter(Mandatory = $true)]
     [int]$GridX,
     [Parameter(Mandatory = $true)]
     [int]$GridY,
@@ -36,7 +38,41 @@ public class SendInputApi {
     [DllImport("user32.dll")]
     public static extern int GetSystemMetrics(int nIndex);
 }
+
+public class FocusApi {
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport("kernel32.dll")]
+    public static extern uint GetCurrentThreadId();
+}
 "@
+
+function Force-Foreground([IntPtr]$hwnd) {
+    $foreground = [FocusApi]::GetForegroundWindow()
+    if ($foreground -eq $hwnd) { return }
+
+    $foreThread = 0
+    [FocusApi]::GetWindowThreadProcessId($foreground, [ref]$foreThread) | Out-Null
+    $targetThread = 0
+    [FocusApi]::GetWindowThreadProcessId($hwnd, [ref]$targetThread) | Out-Null
+    $curThread = [FocusApi]::GetCurrentThreadId()
+
+    [FocusApi]::AttachThreadInput($curThread, $foreThread, $true) | Out-Null
+    [FocusApi]::AttachThreadInput($curThread, $targetThread, $true) | Out-Null
+    [FocusApi]::SetForegroundWindow($hwnd) | Out-Null
+    [FocusApi]::AttachThreadInput($curThread, $foreThread, $false) | Out-Null
+    [FocusApi]::AttachThreadInput($curThread, $targetThread, $false) | Out-Null
+}
 
 $MOUSEEVENTF_MOVE = 0x0001
 $MOUSEEVENTF_LEFTDOWN = 0x0002
@@ -95,12 +131,22 @@ function Send-Click([int]$x, [int]$y) {
     [SendInputApi]::SendInput(1, @($up), $inputSize) | Out-Null
 }
 
+$targetHwnd = [IntPtr]$Handle
+$previousForeground = [FocusApi]::GetForegroundWindow()
+
+Force-Foreground $targetHwnd
+Start-Sleep -Milliseconds 50
+
 for ($row = 0; $row -lt $Rows; $row++) {
     for ($col = 0; $col -lt $Cols; $col++) {
         $x = $GridX + ($col * $CellSize) + [int]($CellSize / 2)
         $y = $GridY + ($row * $CellSize) + [int]($CellSize / 2)
         Send-Click $x $y
     }
+}
+
+if ($previousForeground -ne [IntPtr]::Zero -and $previousForeground -ne $targetHwnd) {
+    Force-Foreground $previousForeground
 }
 
 '{"success":true}'
