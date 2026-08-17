@@ -3,6 +3,7 @@ const path = require('path');
 
 const LIST_SCRIPT_PATH = path.join(__dirname, 'scripts', 'list-windows.ps1');
 const FOCUS_SCRIPT_PATH = path.join(__dirname, 'scripts', 'focus-window.ps1');
+const RECT_SCRIPT_PATH = path.join(__dirname, 'scripts', 'get-window-rect.ps1');
 const EXCLUDED_TITLES = new Set(['Multi Clicker']);
 
 function getVisibleWindows() {
@@ -66,4 +67,32 @@ function bringToForeground(handle) {
   });
 }
 
-module.exports = { getVisibleWindows, bringToForeground };
+function getWindowRect(handle) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', RECT_SCRIPT_PATH, '-Handle', String(handle)],
+      { maxBuffer: 10 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        const trimmed = stdout.trim();
+        if (!trimmed) {
+          reject(new Error('No output from get-window-rect.ps1'));
+          return;
+        }
+
+        try {
+          resolve(JSON.parse(trimmed));
+        } catch (parseError) {
+          reject(parseError);
+        }
+      }
+    );
+  });
+}
+
+module.exports = { getVisibleWindows, bringToForeground, getWindowRect };

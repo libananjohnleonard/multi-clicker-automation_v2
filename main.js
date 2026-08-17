@@ -2,9 +2,50 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const windowManager = require('./windowManager');
 
+const PANEL_WIDTH = 260;
+const PANEL_HEIGHT = 180;
+const PANEL_INSET = 20;
+const TRACK_INTERVAL_MS = 1000;
+
 let mainWindow;
 let panelWindow;
 let selectedTarget = null;
+let trackInterval = null;
+
+function computePanelPosition(target) {
+  return {
+    x: Math.round(target.x + target.width - PANEL_WIDTH - PANEL_INSET),
+    y: Math.round(target.y + PANEL_INSET)
+  };
+}
+
+function stopTrackingTarget() {
+  if (trackInterval) {
+    clearInterval(trackInterval);
+    trackInterval = null;
+  }
+}
+
+function startTrackingTarget(handle) {
+  stopTrackingTarget();
+
+  trackInterval = setInterval(async () => {
+    if (!panelWindow || panelWindow.isDestroyed()) {
+      stopTrackingTarget();
+      return;
+    }
+
+    try {
+      const rect = await windowManager.getWindowRect(handle);
+      if (!rect.exists) return;
+
+      const pos = computePanelPosition(rect);
+      panelWindow.setBounds({ x: pos.x, y: pos.y, width: PANEL_WIDTH, height: PANEL_HEIGHT });
+    } catch (error) {
+      // transient PowerShell errors are ignored; next tick retries
+    }
+  }, TRACK_INTERVAL_MS);
+}
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -21,16 +62,13 @@ function createMainWindow() {
 }
 
 function createPanelWindow(target) {
-  const panelWidth = 260;
-  const panelHeight = 180;
-  const x = Math.round(target.x + target.width - panelWidth - 20);
-  const y = Math.round(target.y + 20);
+  const pos = computePanelPosition(target);
 
   panelWindow = new BrowserWindow({
-    width: panelWidth,
-    height: panelHeight,
-    x,
-    y,
+    width: PANEL_WIDTH,
+    height: PANEL_HEIGHT,
+    x: pos.x,
+    y: pos.y,
     frame: false,
     alwaysOnTop: true,
     resizable: false,
@@ -46,6 +84,13 @@ function createPanelWindow(target) {
   panelWindow.webContents.once('did-finish-load', () => {
     panelWindow.webContents.send('target-info', target);
   });
+
+  panelWindow.on('closed', () => {
+    stopTrackingTarget();
+    panelWindow = null;
+  });
+
+  startTrackingTarget(target.handle);
 }
 
 ipcMain.handle('get-windows', () => windowManager.getVisibleWindows());
@@ -70,6 +115,7 @@ ipcMain.handle('show-floating-panel', (event, target) => {
 app.whenReady().then(createMainWindow);
 
 app.on('window-all-closed', () => {
+  stopTrackingTarget();
   if (process.platform !== 'darwin') app.quit();
 });
 
