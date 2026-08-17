@@ -66,10 +66,15 @@ function startAutomation() {
         if (gridWindow && !gridWindow.isDestroyed() && selectedTarget && !isClicking) {
           isClicking = true;
           const bounds = gridWindow.getBounds();
+          gridWindow.setIgnoreMouseEvents(true);
           try {
             await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
           } catch (error) {
             console.error('[grid click failed]', error);
+          } finally {
+            if (gridWindow && !gridWindow.isDestroyed()) {
+              gridWindow.setIgnoreMouseEvents(false);
+            }
           }
           isClicking = false;
         }
