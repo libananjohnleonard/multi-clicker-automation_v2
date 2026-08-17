@@ -33,7 +33,9 @@ for ($row = 0; $row -lt $Rows; $row++) {
         $y = $GridY + ($row * $CellSize) + [int]($CellSize / 2)
 
         [CursorClickApi]::SetCursorPos($x, $y) | Out-Null
+        Start-Sleep -Milliseconds 30
         [CursorClickApi]::mouse_event($MOUSEEVENTF_LEFTDOWN, 0, 0, 0, [IntPtr]::Zero)
+        Start-Sleep -Milliseconds 50
         [CursorClickApi]::mouse_event($MOUSEEVENTF_LEFTUP, 0, 0, 0, [IntPtr]::Zero)
     }
 }
