@@ -64,23 +64,29 @@ function Send-Click([int]$x, [int]$y) {
     $downFlags = $MOUSEEVENTF_LEFTDOWN -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
     $upFlags = $MOUSEEVENTF_LEFTUP -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
 
+    $moveMi = New-Object MOUSEINPUT
+    $moveMi.dx = $nx
+    $moveMi.dy = $ny
+    $moveMi.dwFlags = $moveFlags
     $move = New-Object INPUT
     $move.type = 0
-    $move.mi.dx = $nx
-    $move.mi.dy = $ny
-    $move.mi.dwFlags = $moveFlags
+    $move.mi = $moveMi
 
+    $downMi = New-Object MOUSEINPUT
+    $downMi.dx = $nx
+    $downMi.dy = $ny
+    $downMi.dwFlags = $downFlags
     $down = New-Object INPUT
     $down.type = 0
-    $down.mi.dx = $nx
-    $down.mi.dy = $ny
-    $down.mi.dwFlags = $downFlags
+    $down.mi = $downMi
 
+    $upMi = New-Object MOUSEINPUT
+    $upMi.dx = $nx
+    $upMi.dy = $ny
+    $upMi.dwFlags = $upFlags
     $up = New-Object INPUT
     $up.type = 0
-    $up.mi.dx = $nx
-    $up.mi.dy = $ny
-    $up.mi.dwFlags = $upFlags
+    $up.mi = $upMi
 
     [SendInputApi]::SendInput(1, @($move), $inputSize) | Out-Null
     Start-Sleep -Milliseconds 30
