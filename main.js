@@ -118,10 +118,15 @@ function startPointAutomation(point) {
       if (point.window && !point.window.isDestroyed() && selectedTarget && !point.isClicking) {
         point.isClicking = true;
         const bounds = point.window.getBounds();
+        point.window.setIgnoreMouseEvents(true);
         try {
           await windowManager.clickGrid(bounds, 1, 1, POINT_SIZE);
         } catch (error) {
           // ignore transient click errors; next cycle retries
+        } finally {
+          if (point.window && !point.window.isDestroyed()) {
+            point.window.setIgnoreMouseEvents(false);
+          }
         }
         point.isClicking = false;
       }
@@ -313,7 +318,6 @@ function createClickPointWindow(target, id) {
   });
 
   win.loadFile(path.join(__dirname, 'renderer', 'point.html'));
-  win.setIgnoreMouseEvents(true, { forward: true });
 
   const point = {
     id,
@@ -333,13 +337,6 @@ function createClickPointWindow(target, id) {
   clickPoints.push(point);
   sendClickPointsState();
 }
-
-ipcMain.on('set-ignore-mouse', (event, ignore) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (win && !win.isDestroyed()) {
-    win.setIgnoreMouseEvents(ignore, { forward: true });
-  }
-});
 
 ipcMain.handle('get-windows', () => windowManager.getVisibleWindows());
 
