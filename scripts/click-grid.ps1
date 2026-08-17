@@ -17,41 +17,136 @@ Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 
-public class ClickApi {
-    [DllImport("user32.dll")]
-    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+public struct MOUSEINPUT {
+    public int dx;
+    public int dy;
+    public uint mouseData;
+    public uint dwFlags;
+    public uint time;
+    public IntPtr dwExtraInfo;
+}
+
+public struct INPUT {
+    public int type;
+    public MOUSEINPUT mi;
+}
+
+public class SendInputApi {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     [DllImport("user32.dll")]
-    public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+    public static extern int GetSystemMetrics(int nIndex);
+}
 
-    public struct POINT { public int X; public int Y; }
+public class FocusApi {
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport("kernel32.dll")]
+    public static extern uint GetCurrentThreadId();
 }
 "@
 
-$WM_LBUTTONDOWN = 0x0201
-$WM_LBUTTONUP = 0x0202
-$MK_LBUTTON = [IntPtr]0x0001
+function Force-Foreground([IntPtr]$hwnd) {
+    $foreground = [FocusApi]::GetForegroundWindow()
+    if ($foreground -eq $hwnd) { return }
 
-$hwnd = [IntPtr]$Handle
+    $foreThread = 0
+    [FocusApi]::GetWindowThreadProcessId($foreground, [ref]$foreThread) | Out-Null
+    $targetThread = 0
+    [FocusApi]::GetWindowThreadProcessId($hwnd, [ref]$targetThread) | Out-Null
+    $curThread = [FocusApi]::GetCurrentThreadId()
+
+    [FocusApi]::AttachThreadInput($curThread, $foreThread, $true) | Out-Null
+    [FocusApi]::AttachThreadInput($curThread, $targetThread, $true) | Out-Null
+    [FocusApi]::SetForegroundWindow($hwnd) | Out-Null
+    [FocusApi]::AttachThreadInput($curThread, $foreThread, $false) | Out-Null
+    [FocusApi]::AttachThreadInput($curThread, $targetThread, $false) | Out-Null
+}
+
+$MOUSEEVENTF_MOVE = 0x0001
+$MOUSEEVENTF_LEFTDOWN = 0x0002
+$MOUSEEVENTF_LEFTUP = 0x0004
+$MOUSEEVENTF_ABSOLUTE = 0x8000
+$MOUSEEVENTF_VIRTUALDESK = 0x4000
+
+$SM_XVIRTUALSCREEN = 76
+$SM_YVIRTUALSCREEN = 77
+$SM_CXVIRTUALSCREEN = 78
+$SM_CYVIRTUALSCREEN = 79
+
+$vLeft = [SendInputApi]::GetSystemMetrics($SM_XVIRTUALSCREEN)
+$vTop = [SendInputApi]::GetSystemMetrics($SM_YVIRTUALSCREEN)
+$vWidth = [SendInputApi]::GetSystemMetrics($SM_CXVIRTUALSCREEN)
+$vHeight = [SendInputApi]::GetSystemMetrics($SM_CYVIRTUALSCREEN)
+
+$inputSize = [System.Runtime.InteropServices.Marshal]::SizeOf([Type][INPUT])
+
+function Send-Click([int]$x, [int]$y) {
+    $nx = [int]((($x - $vLeft) * 65536) / $vWidth)
+    $ny = [int]((($y - $vTop) * 65536) / $vHeight)
+
+    $moveFlags = $MOUSEEVENTF_MOVE -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
+    $downFlags = $MOUSEEVENTF_LEFTDOWN -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
+    $upFlags = $MOUSEEVENTF_LEFTUP -bor $MOUSEEVENTF_ABSOLUTE -bor $MOUSEEVENTF_VIRTUALDESK
+
+    $moveMi = New-Object MOUSEINPUT
+    $moveMi.dx = $nx
+    $moveMi.dy = $ny
+    $moveMi.dwFlags = $moveFlags
+    $move = New-Object INPUT
+    $move.type = 0
+    $move.mi = $moveMi
+
+    $downMi = New-Object MOUSEINPUT
+    $downMi.dx = $nx
+    $downMi.dy = $ny
+    $downMi.dwFlags = $downFlags
+    $down = New-Object INPUT
+    $down.type = 0
+    $down.mi = $downMi
+
+    $upMi = New-Object MOUSEINPUT
+    $upMi.dx = $nx
+    $upMi.dy = $ny
+    $upMi.dwFlags = $upFlags
+    $up = New-Object INPUT
+    $up.type = 0
+    $up.mi = $upMi
+
+    [SendInputApi]::SendInput(1, @($move), $inputSize) | Out-Null
+    Start-Sleep -Milliseconds 30
+    [SendInputApi]::SendInput(1, @($down), $inputSize) | Out-Null
+    Start-Sleep -Milliseconds 50
+    [SendInputApi]::SendInput(1, @($up), $inputSize) | Out-Null
+}
+
+$targetHwnd = [IntPtr]$Handle
+$previousForeground = [FocusApi]::GetForegroundWindow()
+
+Force-Foreground $targetHwnd
+Start-Sleep -Milliseconds 50
 
 for ($row = 0; $row -lt $Rows; $row++) {
     for ($col = 0; $col -lt $Cols; $col++) {
-        $screenX = $GridX + ($col * $CellSize) + [int]($CellSize / 2)
-        $screenY = $GridY + ($row * $CellSize) + [int]($CellSize / 2)
-
-        $pt = New-Object ClickApi+POINT
-        $pt.X = $screenX
-        $pt.Y = $screenY
-        [ClickApi]::ScreenToClient($hwnd, [ref]$pt) | Out-Null
-
-        [int64]$packed = ((($pt.Y -band 0xFFFF) -shl 16) -bor ($pt.X -band 0xFFFF))
-        $packed = $packed -band 0xFFFFFFFF
-        $lParam = [IntPtr]$packed
-
-        [ClickApi]::PostMessage($hwnd, $WM_LBUTTONDOWN, $MK_LBUTTON, $lParam) | Out-Null
-        Start-Sleep -Milliseconds 20
-        [ClickApi]::PostMessage($hwnd, $WM_LBUTTONUP, [IntPtr]0, $lParam) | Out-Null
+        $x = $GridX + ($col * $CellSize) + [int]($CellSize / 2)
+        $y = $GridY + ($row * $CellSize) + [int]($CellSize / 2)
+        Send-Click $x $y
     }
+}
+
+if ($previousForeground -ne [IntPtr]::Zero -and $previousForeground -ne $targetHwnd) {
+    Force-Foreground $previousForeground
 }
 
 '{"success":true}'
