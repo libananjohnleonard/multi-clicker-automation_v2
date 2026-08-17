@@ -6,9 +6,6 @@
   "scripts": {
     "start": "electron ."
   },
-  "dependencies": {
-    "@nut-tree-fork/nut-js": "^4.2.6"
-  },
   "devDependencies": {
     "electron": "^31.0.0"
   }

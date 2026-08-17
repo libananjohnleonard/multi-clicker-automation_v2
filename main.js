@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const windowManager = require('./windowManager');
-const clicker = require('./clicker');
 
 const PANEL_WIDTH = 260;
 const PANEL_HEIGHT = 180;
@@ -56,11 +55,11 @@ function startAutomation() {
     if (countdownRemaining <= 0) {
       countdownRemaining = timerIntervalSeconds;
 
-      if (gridWindow && !gridWindow.isDestroyed() && !isClicking) {
+      if (gridWindow && !gridWindow.isDestroyed() && selectedTarget && !isClicking) {
         isClicking = true;
         const bounds = gridWindow.getBounds();
         try {
-          await clicker.clickGrid(bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+          await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
         } catch (error) {
           // ignore transient click errors; next cycle retries
         }
