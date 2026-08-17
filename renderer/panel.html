@@ -53,15 +53,34 @@
       margin-top: 6px;
       padding: 6px;
     }
+    #timer-input {
+      -webkit-app-region: no-drag;
+      width: 48px;
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 13px;
+    }
+    #timer-status {
+      font-size: 11px;
+      color: #4a90e2;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
   <div id="target-label">No target</div>
 
   <div class="row">
-    <span>Timer: 6s</span>
-    <button disabled>Set</button>
+    <span>Timer (sec)</span>
+    <span>
+      <input type="number" id="timer-input" min="1" value="6">
+      <button id="timer-set-btn">Set</button>
+    </span>
   </div>
+  <div id="timer-status">Interval: 6s</div>
 
   <div class="row">
     <span>Grid</span>

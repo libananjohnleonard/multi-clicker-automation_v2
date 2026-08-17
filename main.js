@@ -11,6 +11,7 @@ let mainWindow;
 let panelWindow;
 let selectedTarget = null;
 let trackInterval = null;
+let timerIntervalSeconds = 6;
 
 function computePanelPosition(target) {
   return {
@@ -116,6 +117,13 @@ ipcMain.handle('show-floating-panel', (event, target) => {
   if (mainWindow) mainWindow.hide();
   createPanelWindow(target);
   return true;
+});
+
+ipcMain.handle('set-timer-interval', (event, seconds) => {
+  if (Number.isInteger(seconds) && seconds >= 1) {
+    timerIntervalSeconds = seconds;
+  }
+  return timerIntervalSeconds;
 });
 
 app.whenReady().then(createMainWindow);
