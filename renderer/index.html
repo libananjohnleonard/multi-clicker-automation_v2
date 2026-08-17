@@ -62,7 +62,7 @@
       font-size: 12px;
       color: #4a90e2;
     }
-    #confirm-panel, #confirmed-panel {
+    #confirm-panel {
       display: none;
       margin-top: 16px;
       padding: 12px;
@@ -70,10 +70,10 @@
       border: 1px solid #4a90e2;
       border-radius: 4px;
     }
-    #confirm-panel.visible, #confirmed-panel.visible {
+    #confirm-panel.visible {
       display: block;
     }
-    #confirm-details, #confirmed-details {
+    #confirm-details {
       font-size: 13px;
       margin-bottom: 10px;
     }
@@ -88,11 +88,6 @@
   <div id="confirm-panel">
     <div id="confirm-details"></div>
     <button id="continue-btn">Continue</button>
-  </div>
-
-  <div id="confirmed-panel">
-    <div id="confirmed-details"></div>
-    <button id="change-target-btn">Change Target</button>
   </div>
 
   <script src="renderer.js"></script>

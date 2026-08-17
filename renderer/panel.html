@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Multi Clicker Panel</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+    body {
+      font-family: sans-serif;
+      background: #1e1e1e;
+      color: #eee;
+      border: 1px solid #4a90e2;
+      box-sizing: border-box;
+      padding: 10px;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+    #target-label {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .row span {
+      font-size: 13px;
+    }
+    button {
+      -webkit-app-region: no-drag;
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    #start-btn {
+      width: 100%;
+      margin-top: 6px;
+      padding: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="target-label">No target</div>
+
+  <div class="row">
+    <span>Timer: 6s</span>
+    <button disabled>Set</button>
+  </div>
+
+  <div class="row">
+    <span>Grid</span>
+    <span>
+      <button id="grid-add-btn" disabled>+</button>
+      <button id="grid-remove-btn" disabled>-</button>
+    </span>
+  </div>
+
+  <button id="start-btn" disabled>Start</button>
+
+  <script src="panel.js"></script>
+</body>
+</html>

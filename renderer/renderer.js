@@ -4,9 +4,6 @@ const statusEl = document.getElementById('status');
 const confirmPanel = document.getElementById('confirm-panel');
 const confirmDetails = document.getElementById('confirm-details');
 const continueBtn = document.getElementById('continue-btn');
-const confirmedPanel = document.getElementById('confirmed-panel');
-const confirmedDetails = document.getElementById('confirmed-details');
-const changeTargetBtn = document.getElementById('change-target-btn');
 
 let candidateWindow = null;
 
@@ -59,27 +56,10 @@ continueBtn.addEventListener('click', async () => {
   continueBtn.textContent = 'Redirecting...';
 
   const target = await window.api.redirectToTarget(candidateWindow);
-
-  confirmedDetails.textContent =
-    `${target.title} (${target.processName})\n` +
-    `Position: ${target.x}, ${target.y} | Size: ${target.width} x ${target.height}`;
-  confirmedDetails.style.whiteSpace = 'pre-line';
-  confirmedPanel.classList.add('visible');
-  confirmPanel.classList.remove('visible');
-  listEl.style.display = 'none';
-  refreshBtn.style.display = 'none';
-  statusEl.textContent = '';
+  await window.api.showFloatingPanel(target);
 
   continueBtn.disabled = false;
   continueBtn.textContent = 'Continue';
-});
-
-changeTargetBtn.addEventListener('click', () => {
-  candidateWindow = null;
-  confirmedPanel.classList.remove('visible');
-  listEl.style.display = '';
-  refreshBtn.style.display = '';
-  loadWindows();
 });
 
 refreshBtn.addEventListener('click', loadWindows);
