@@ -1,6 +1,14 @@
 const refreshBtn = document.getElementById('refresh-btn');
 const listEl = document.getElementById('window-list');
 const statusEl = document.getElementById('status');
+const confirmPanel = document.getElementById('confirm-panel');
+const confirmDetails = document.getElementById('confirm-details');
+const continueBtn = document.getElementById('continue-btn');
+const confirmedPanel = document.getElementById('confirmed-panel');
+const confirmedDetails = document.getElementById('confirmed-details');
+const changeTargetBtn = document.getElementById('change-target-btn');
+
+let candidateWindow = null;
 
 async function loadWindows() {
   statusEl.textContent = 'Loading...';
@@ -27,11 +35,13 @@ async function loadWindows() {
 
     const selectBtn = document.createElement('button');
     selectBtn.textContent = 'Select';
-    selectBtn.addEventListener('click', async () => {
-      await window.api.selectWindow(win);
+    selectBtn.addEventListener('click', () => {
+      candidateWindow = win;
       document.querySelectorAll('#window-list li').forEach((el) => el.classList.remove('selected'));
       li.classList.add('selected');
-      statusEl.textContent = `Selected: ${win.title}`;
+
+      confirmDetails.textContent = `${win.title} (${win.processName})`;
+      confirmPanel.classList.add('visible');
     });
 
     li.appendChild(titleSpan);
@@ -41,6 +51,27 @@ async function loadWindows() {
 
   statusEl.textContent = `Found ${windows.length} window(s).`;
 }
+
+continueBtn.addEventListener('click', async () => {
+  if (!candidateWindow) return;
+
+  await window.api.selectWindow(candidateWindow);
+
+  confirmedDetails.textContent = `${candidateWindow.title} (${candidateWindow.processName})`;
+  confirmedPanel.classList.add('visible');
+  confirmPanel.classList.remove('visible');
+  listEl.style.display = 'none';
+  refreshBtn.style.display = 'none';
+  statusEl.textContent = '';
+});
+
+changeTargetBtn.addEventListener('click', () => {
+  candidateWindow = null;
+  confirmedPanel.classList.remove('visible');
+  listEl.style.display = '';
+  refreshBtn.style.display = '';
+  loadWindows();
+});
 
 refreshBtn.addEventListener('click', loadWindows);
 loadWindows();
