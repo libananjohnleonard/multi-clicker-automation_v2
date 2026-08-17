@@ -41,6 +41,12 @@ function startTrackingTarget(handle) {
 
       const pos = computePanelPosition(rect);
       panelWindow.setBounds({ x: pos.x, y: pos.y, width: PANEL_WIDTH, height: PANEL_HEIGHT });
+
+      if (rect.isForeground || panelWindow.isFocused()) {
+        if (!panelWindow.isVisible()) panelWindow.showInactive();
+      } else if (panelWindow.isVisible()) {
+        panelWindow.hide();
+      }
     } catch (error) {
       // transient PowerShell errors are ignored; next tick retries
     }
