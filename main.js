@@ -3,7 +3,7 @@ const path = require('path');
 const windowManager = require('./windowManager');
 
 const PANEL_WIDTH = 260;
-const PANEL_HEIGHT = 230;
+const PANEL_HEIGHT = 340;
 const PANEL_INSET = 20;
 const TRACK_INTERVAL_MS = 1000;
 const GRID_COLS = 14;
@@ -11,6 +11,8 @@ const GRID_ROWS = 8;
 const GRID_CELL_SIZE = 22;
 const GRID_WIDTH = GRID_COLS * GRID_CELL_SIZE;
 const GRID_HEIGHT = GRID_ROWS * GRID_CELL_SIZE;
+const POINT_SIZE = 22;
+const POINT_OFFSET_STEP = 30;
 
 let mainWindow;
 let panelWindow;
@@ -23,6 +25,8 @@ let automationInterval = null;
 let isAutomationRunning = false;
 let countdownRemaining = 0;
 let isClicking = false;
+let clickPoints = [];
+let nextPointId = 1;
 
 function sendAutomationState() {
   if (panelWindow && !panelWindow.isDestroyed()) {
@@ -39,35 +43,91 @@ function stopAutomation() {
     clearInterval(automationInterval);
     automationInterval = null;
   }
+  clickPoints.forEach(stopPointAutomation);
   sendAutomationState();
+  sendClickPointsState();
 }
 
 function startAutomation() {
-  if (isAutomationRunning || !gridWindow) return;
+  if (isAutomationRunning || (!gridWindow && clickPoints.length === 0)) return;
 
   isAutomationRunning = true;
-  countdownRemaining = timerIntervalSeconds;
   sendAutomationState();
 
-  automationInterval = setInterval(async () => {
-    countdownRemaining -= 1;
+  if (gridWindow) {
+    countdownRemaining = timerIntervalSeconds;
 
-    if (countdownRemaining <= 0) {
-      countdownRemaining = timerIntervalSeconds;
+    automationInterval = setInterval(async () => {
+      countdownRemaining -= 1;
 
-      if (gridWindow && !gridWindow.isDestroyed() && selectedTarget && !isClicking) {
-        isClicking = true;
-        const bounds = gridWindow.getBounds();
+      if (countdownRemaining <= 0) {
+        countdownRemaining = timerIntervalSeconds;
+
+        if (gridWindow && !gridWindow.isDestroyed() && selectedTarget && !isClicking) {
+          isClicking = true;
+          const bounds = gridWindow.getBounds();
+          try {
+            await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+          } catch (error) {
+            // ignore transient click errors; next cycle retries
+          }
+          isClicking = false;
+        }
+      }
+
+      sendAutomationState();
+    }, 1000);
+  }
+
+  clickPoints.forEach(startPointAutomation);
+  sendClickPointsState();
+}
+
+function sendClickPointsState() {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send(
+      'click-points-state',
+      clickPoints.map((p) => ({
+        id: p.id,
+        intervalSeconds: p.intervalSeconds,
+        countdown: p.countdownRemaining,
+        running: !!p.timerHandle
+      }))
+    );
+  }
+}
+
+function stopPointAutomation(point) {
+  if (point.timerHandle) {
+    clearInterval(point.timerHandle);
+    point.timerHandle = null;
+  }
+}
+
+function startPointAutomation(point) {
+  if (point.timerHandle) return;
+
+  point.countdownRemaining = point.intervalSeconds;
+
+  point.timerHandle = setInterval(async () => {
+    point.countdownRemaining -= 1;
+
+    if (point.countdownRemaining <= 0) {
+      point.countdownRemaining = point.intervalSeconds;
+
+      if (point.window && !point.window.isDestroyed() && selectedTarget && !point.isClicking) {
+        point.isClicking = true;
+        const bounds = point.window.getBounds();
         try {
-          await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+          await windowManager.clickGrid(selectedTarget.handle, bounds, 1, 1, POINT_SIZE);
         } catch (error) {
           // ignore transient click errors; next cycle retries
         }
-        isClicking = false;
+        point.isClicking = false;
       }
     }
 
-    sendAutomationState();
+    sendClickPointsState();
   }, 1000);
 }
 
@@ -89,8 +149,15 @@ function stopTrackingTarget() {
 function anyOwnWindowFocused() {
   return (
     (panelWindow && !panelWindow.isDestroyed() && panelWindow.isFocused()) ||
-    (gridWindow && !gridWindow.isDestroyed() && gridWindow.isFocused())
+    (gridWindow && !gridWindow.isDestroyed() && gridWindow.isFocused()) ||
+    clickPoints.some((p) => p.window && !p.window.isDestroyed() && p.window.isFocused())
   );
+}
+
+function moveByDelta(win, dx, dy) {
+  if (!win || win.isDestroyed()) return;
+  const bounds = win.getBounds();
+  win.setBounds({ x: bounds.x + dx, y: bounds.y + dy, width: bounds.width, height: bounds.height });
 }
 
 function applyVisibility(win, shouldShow) {
@@ -122,17 +189,23 @@ function startTrackingTarget(handle) {
       panelWindow.setBounds({ x: pos.x, y: pos.y, width: PANEL_WIDTH, height: PANEL_HEIGHT });
       applyVisibility(panelWindow, shouldShow);
 
+      let dx = 0;
+      let dy = 0;
+      if (lastTrackedRect) {
+        dx = rect.x - lastTrackedRect.x;
+        dy = rect.y - lastTrackedRect.y;
+      }
+
       if (gridWindow && !gridWindow.isDestroyed()) {
-        if (lastTrackedRect) {
-          const dx = rect.x - lastTrackedRect.x;
-          const dy = rect.y - lastTrackedRect.y;
-          if (dx !== 0 || dy !== 0) {
-            const bounds = gridWindow.getBounds();
-            gridWindow.setBounds({ x: bounds.x + dx, y: bounds.y + dy, width: bounds.width, height: bounds.height });
-          }
-        }
+        if (dx !== 0 || dy !== 0) moveByDelta(gridWindow, dx, dy);
         applyVisibility(gridWindow, shouldShow);
       }
+
+      clickPoints.forEach((point) => {
+        if (!point.window || point.window.isDestroyed()) return;
+        if (dx !== 0 || dy !== 0) moveByDelta(point.window, dx, dy);
+        applyVisibility(point.window, shouldShow);
+      });
 
       lastTrackedRect = rect;
     } catch (error) {
@@ -184,6 +257,7 @@ function createPanelWindow(target) {
     stopAutomation();
     panelWindow = null;
     if (gridWindow) gridWindow.close();
+    clickPoints.slice().forEach((p) => p.window && !p.window.isDestroyed() && p.window.close());
   });
 
   startTrackingTarget(target.handle);
@@ -215,6 +289,49 @@ function createGridWindow(target) {
   gridWindow.on('closed', () => {
     gridWindow = null;
   });
+}
+
+function createClickPointWindow(target, id) {
+  const offset = (clickPoints.length % 5) * POINT_OFFSET_STEP;
+  const x = Math.round(target.x + target.width / 2 - POINT_SIZE / 2 + offset);
+  const y = Math.round(target.y + target.height / 2 - POINT_SIZE / 2 + offset);
+
+  const win = new BrowserWindow({
+    width: POINT_SIZE,
+    height: POINT_SIZE,
+    x,
+    y,
+    frame: false,
+    alwaysOnTop: true,
+    resizable: false,
+    transparent: true,
+    hasShadow: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  win.loadFile(path.join(__dirname, 'renderer', 'point.html'));
+
+  const point = {
+    id,
+    window: win,
+    intervalSeconds: timerIntervalSeconds,
+    countdownRemaining: 0,
+    timerHandle: null,
+    isClicking: false
+  };
+
+  win.on('closed', () => {
+    stopPointAutomation(point);
+    clickPoints = clickPoints.filter((p) => p.id !== id);
+    sendClickPointsState();
+  });
+
+  clickPoints.push(point);
+  sendClickPointsState();
 }
 
 ipcMain.handle('get-windows', () => windowManager.getVisibleWindows());
@@ -251,7 +368,10 @@ ipcMain.handle('add-grid', () => {
 });
 
 ipcMain.handle('remove-grid', () => {
-  stopAutomation();
+  if (automationInterval) {
+    clearInterval(automationInterval);
+    automationInterval = null;
+  }
   if (gridWindow) {
     gridWindow.close();
   }
@@ -265,6 +385,29 @@ ipcMain.handle('toggle-automation', () => {
     startAutomation();
   }
   return { running: isAutomationRunning, countdown: countdownRemaining };
+});
+
+ipcMain.handle('add-click-point', () => {
+  if (selectedTarget) {
+    createClickPointWindow(selectedTarget, nextPointId++);
+  }
+  return clickPoints.map((p) => ({ id: p.id, intervalSeconds: p.intervalSeconds }));
+});
+
+ipcMain.handle('remove-click-point', (event, id) => {
+  const point = clickPoints.find((p) => p.id === id);
+  if (point && point.window && !point.window.isDestroyed()) {
+    point.window.close();
+  }
+  return true;
+});
+
+ipcMain.handle('set-point-timer', (event, id, seconds) => {
+  const point = clickPoints.find((p) => p.id === id);
+  if (point && Number.isInteger(seconds) && seconds >= 1) {
+    point.intervalSeconds = seconds;
+  }
+  return point ? point.intervalSeconds : null;
 });
 
 app.whenReady().then(createMainWindow);
