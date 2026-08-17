@@ -26,6 +26,12 @@ ipcMain.handle('select-window', (event, win) => {
   return selectedTarget;
 });
 
+ipcMain.handle('redirect-to-target', async (event, win) => {
+  const bounds = await windowManager.bringToForeground(win.handle);
+  selectedTarget = { ...win, ...bounds };
+  return selectedTarget;
+});
+
 app.whenReady().then(createMainWindow);
 
 app.on('window-all-closed', () => {

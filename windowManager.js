@@ -1,14 +1,15 @@
 const { execFile } = require('child_process');
 const path = require('path');
 
-const SCRIPT_PATH = path.join(__dirname, 'scripts', 'list-windows.ps1');
+const LIST_SCRIPT_PATH = path.join(__dirname, 'scripts', 'list-windows.ps1');
+const FOCUS_SCRIPT_PATH = path.join(__dirname, 'scripts', 'focus-window.ps1');
 const EXCLUDED_TITLES = new Set(['Multi Clicker']);
 
 function getVisibleWindows() {
   return new Promise((resolve, reject) => {
     execFile(
       'powershell.exe',
-      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT_PATH],
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', LIST_SCRIPT_PATH],
       { maxBuffer: 10 * 1024 * 1024 },
       (error, stdout) => {
         if (error) {
@@ -37,4 +38,32 @@ function getVisibleWindows() {
   });
 }
 
-module.exports = { getVisibleWindows };
+function bringToForeground(handle) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', FOCUS_SCRIPT_PATH, '-Handle', String(handle)],
+      { maxBuffer: 10 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        const trimmed = stdout.trim();
+        if (!trimmed) {
+          reject(new Error('No output from focus-window.ps1'));
+          return;
+        }
+
+        try {
+          resolve(JSON.parse(trimmed));
+        } catch (parseError) {
+          reject(parseError);
+        }
+      }
+    );
+  });
+}
+
+module.exports = { getVisibleWindows, bringToForeground };

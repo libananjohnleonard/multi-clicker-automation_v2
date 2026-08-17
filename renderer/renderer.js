@@ -55,14 +55,23 @@ async function loadWindows() {
 continueBtn.addEventListener('click', async () => {
   if (!candidateWindow) return;
 
-  await window.api.selectWindow(candidateWindow);
+  continueBtn.disabled = true;
+  continueBtn.textContent = 'Redirecting...';
 
-  confirmedDetails.textContent = `${candidateWindow.title} (${candidateWindow.processName})`;
+  const target = await window.api.redirectToTarget(candidateWindow);
+
+  confirmedDetails.textContent =
+    `${target.title} (${target.processName})\n` +
+    `Position: ${target.x}, ${target.y} | Size: ${target.width} x ${target.height}`;
+  confirmedDetails.style.whiteSpace = 'pre-line';
   confirmedPanel.classList.add('visible');
   confirmPanel.classList.remove('visible');
   listEl.style.display = 'none';
   refreshBtn.style.display = 'none';
   statusEl.textContent = '';
+
+  continueBtn.disabled = false;
+  continueBtn.textContent = 'Continue';
 });
 
 changeTargetBtn.addEventListener('click', () => {
