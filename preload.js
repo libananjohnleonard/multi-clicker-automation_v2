@@ -8,5 +8,7 @@ contextBridge.exposeInMainWorld('api', {
   onTargetInfo: (callback) => ipcRenderer.on('target-info', (event, target) => callback(target)),
   setTimerInterval: (seconds) => ipcRenderer.invoke('set-timer-interval', seconds),
   addGrid: () => ipcRenderer.invoke('add-grid'),
-  removeGrid: () => ipcRenderer.invoke('remove-grid')
+  removeGrid: () => ipcRenderer.invoke('remove-grid'),
+  toggleAutomation: () => ipcRenderer.invoke('toggle-automation'),
+  onAutomationState: (callback) => ipcRenderer.on('automation-state', (event, state) => callback(state))
 });

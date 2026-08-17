@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const windowManager = require('./windowManager');
+const clicker = require('./clicker');
 
 const PANEL_WIDTH = 260;
 const PANEL_HEIGHT = 180;
@@ -19,6 +20,57 @@ let selectedTarget = null;
 let trackInterval = null;
 let timerIntervalSeconds = 6;
 let lastTrackedRect = null;
+let automationInterval = null;
+let isAutomationRunning = false;
+let countdownRemaining = 0;
+let isClicking = false;
+
+function sendAutomationState() {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send('automation-state', {
+      running: isAutomationRunning,
+      countdown: countdownRemaining
+    });
+  }
+}
+
+function stopAutomation() {
+  isAutomationRunning = false;
+  if (automationInterval) {
+    clearInterval(automationInterval);
+    automationInterval = null;
+  }
+  sendAutomationState();
+}
+
+function startAutomation() {
+  if (isAutomationRunning || !gridWindow) return;
+
+  isAutomationRunning = true;
+  countdownRemaining = timerIntervalSeconds;
+  sendAutomationState();
+
+  automationInterval = setInterval(async () => {
+    countdownRemaining -= 1;
+
+    if (countdownRemaining <= 0) {
+      countdownRemaining = timerIntervalSeconds;
+
+      if (gridWindow && !gridWindow.isDestroyed() && !isClicking) {
+        isClicking = true;
+        const bounds = gridWindow.getBounds();
+        try {
+          await clicker.clickGrid(bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+        } catch (error) {
+          // ignore transient click errors; next cycle retries
+        }
+        isClicking = false;
+      }
+    }
+
+    sendAutomationState();
+  }, 1000);
+}
 
 function computePanelPosition(target) {
   return {
@@ -130,6 +182,7 @@ function createPanelWindow(target) {
 
   panelWindow.on('closed', () => {
     stopTrackingTarget();
+    stopAutomation();
     panelWindow = null;
     if (gridWindow) gridWindow.close();
   });
@@ -199,16 +252,27 @@ ipcMain.handle('add-grid', () => {
 });
 
 ipcMain.handle('remove-grid', () => {
+  stopAutomation();
   if (gridWindow) {
     gridWindow.close();
   }
   return true;
 });
 
+ipcMain.handle('toggle-automation', () => {
+  if (isAutomationRunning) {
+    stopAutomation();
+  } else {
+    startAutomation();
+  }
+  return { running: isAutomationRunning, countdown: countdownRemaining };
+});
+
 app.whenReady().then(createMainWindow);
 
 app.on('window-all-closed', () => {
   stopTrackingTarget();
+  stopAutomation();
   if (process.platform !== 'darwin') app.quit();
 });
 
