@@ -27,9 +27,15 @@ public class WinApi {
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
+
     public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
 }
 "@
+
+$DWMWA_CLOAKED = 14
+$excludedProcesses = @('TextInputHost', 'SearchHost', 'ShellExperienceHost', 'StartMenuExperienceHost', 'LockApp', 'AQAUserPS')
 
 $shellWindow = [WinApi]::GetShellWindow()
 $results = New-Object System.Collections.Generic.List[Object]
@@ -48,6 +54,10 @@ $enumProc = {
     $title = $sb.ToString()
     if ([string]::IsNullOrWhiteSpace($title)) { return $true }
 
+    $cloaked = 0
+    [WinApi]::DwmGetWindowAttribute($hWnd, $DWMWA_CLOAKED, [ref]$cloaked, 4) | Out-Null
+    if ($cloaked -ne 0) { return $true }
+
     $rect = New-Object WinApi+RECT
     [WinApi]::GetWindowRect($hWnd, [ref]$rect) | Out-Null
     $width = $rect.Right - $rect.Left
@@ -63,6 +73,8 @@ $enumProc = {
     } catch {
         $procName = "unknown"
     }
+
+    if ($excludedProcesses -contains $procName) { return $true }
 
     $results.Add([PSCustomObject]@{
         handle = $hWnd.ToInt64()
