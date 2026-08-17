@@ -18,7 +18,7 @@ function updateStartAvailability() {
 }
 
 window.api.onTargetInfo((target) => {
-  targetLabel.textContent = `${target.title} (${target.processName})`;
+  targetLabel.textContent = `${target.displayLabel || target.title} (${target.processName})`;
 });
 
 timerSetBtn.addEventListener('click', async () => {

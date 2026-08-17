@@ -18,12 +18,24 @@ async function loadWindows() {
     return;
   }
 
+  const groupCounts = {};
   windows.forEach((win) => {
+    const key = `${win.title}|${win.processName}`;
+    groupCounts[key] = (groupCounts[key] || 0) + 1;
+  });
+
+  const groupSeen = {};
+  windows.forEach((win) => {
+    const key = `${win.title}|${win.processName}`;
+    const displayLabel = groupCounts[key] > 1
+      ? `${win.title} ${(groupSeen[key] = (groupSeen[key] || 0) + 1)}`
+      : win.title;
+
     const li = document.createElement('li');
 
     const titleSpan = document.createElement('span');
     titleSpan.className = 'win-title';
-    titleSpan.textContent = win.title;
+    titleSpan.textContent = displayLabel;
 
     const processSpan = document.createElement('span');
     processSpan.className = 'win-process';
@@ -33,11 +45,11 @@ async function loadWindows() {
     const selectBtn = document.createElement('button');
     selectBtn.textContent = 'Select';
     selectBtn.addEventListener('click', () => {
-      candidateWindow = win;
+      candidateWindow = { ...win, displayLabel };
       document.querySelectorAll('#window-list li').forEach((el) => el.classList.remove('selected'));
       li.classList.add('selected');
 
-      confirmDetails.textContent = `${win.title} (${win.processName})`;
+      confirmDetails.textContent = `${displayLabel} (${win.processName})`;
       confirmPanel.classList.add('visible');
     });
 

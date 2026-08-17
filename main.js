@@ -185,16 +185,15 @@ function startTrackingTarget(handle) {
 
       const shouldShow = rect.isForeground || anyOwnWindowFocused();
 
-      const pos = computePanelPosition(rect);
-      panelWindow.setBounds({ x: pos.x, y: pos.y, width: PANEL_WIDTH, height: PANEL_HEIGHT });
-      applyVisibility(panelWindow, shouldShow);
-
       let dx = 0;
       let dy = 0;
       if (lastTrackedRect) {
         dx = rect.x - lastTrackedRect.x;
         dy = rect.y - lastTrackedRect.y;
       }
+
+      if (dx !== 0 || dy !== 0) moveByDelta(panelWindow, dx, dy);
+      applyVisibility(panelWindow, shouldShow);
 
       if (gridWindow && !gridWindow.isDestroyed()) {
         if (dx !== 0 || dy !== 0) moveByDelta(gridWindow, dx, dy);
