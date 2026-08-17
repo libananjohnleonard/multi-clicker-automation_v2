@@ -1,0 +1,15 @@
+{
+  "name": "multi-clicker",
+  "version": "0.1.0",
+  "description": "Lightweight desktop automation tool for multi-point grid clicking on a target application.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.6"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}
