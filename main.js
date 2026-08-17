@@ -69,7 +69,7 @@ function startAutomation() {
           try {
             await windowManager.clickGrid(bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
           } catch (error) {
-            // ignore transient click errors; next cycle retries
+            console.error('[grid click failed]', error);
           }
           isClicking = false;
         }
@@ -119,10 +119,12 @@ function startPointAutomation(point) {
         point.isClicking = true;
         const bounds = point.window.getBounds();
         point.window.setIgnoreMouseEvents(true);
+        console.log(`[point ${point.id} click] bounds=(${bounds.x},${bounds.y}) target center=(${Math.round(bounds.x + POINT_SIZE / 2)},${Math.round(bounds.y + POINT_SIZE / 2)})`);
         try {
-          await windowManager.clickGrid(bounds, 1, 1, POINT_SIZE);
+          const result = await windowManager.clickGrid(bounds, 1, 1, POINT_SIZE);
+          console.log(`[point ${point.id} click] result:`, result);
         } catch (error) {
-          // ignore transient click errors; next cycle retries
+          console.error(`[point ${point.id} click failed]`, error);
         } finally {
           if (point.window && !point.window.isDestroyed()) {
             point.window.setIgnoreMouseEvents(false);
