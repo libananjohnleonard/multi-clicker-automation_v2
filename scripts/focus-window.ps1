@@ -34,7 +34,7 @@ public class FocusApi {
 "@
 
 $hwnd = [IntPtr]$Handle
-$SW_RESTORE = 9
+$SW_MAXIMIZE = 3
 
 $foreground = [FocusApi]::GetForegroundWindow()
 $foreThread = 0
@@ -46,7 +46,7 @@ $curThread = [FocusApi]::GetCurrentThreadId()
 [FocusApi]::AttachThreadInput($curThread, $foreThread, $true) | Out-Null
 [FocusApi]::AttachThreadInput($curThread, $targetThread, $true) | Out-Null
 
-[FocusApi]::ShowWindow($hwnd, $SW_RESTORE) | Out-Null
+[FocusApi]::ShowWindow($hwnd, $SW_MAXIMIZE) | Out-Null
 $success = [FocusApi]::SetForegroundWindow($hwnd)
 
 [FocusApi]::AttachThreadInput($curThread, $foreThread, $false) | Out-Null
