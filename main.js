@@ -8,7 +8,7 @@ const PANEL_INSET = 20;
 const TRACK_INTERVAL_MS = 1000;
 const GRID_COLS = 14;
 const GRID_ROWS = 8;
-const GRID_CELL_SIZE = 20;
+const GRID_CELL_SIZE = 22;
 const GRID_WIDTH = GRID_COLS * GRID_CELL_SIZE;
 const GRID_HEIGHT = GRID_ROWS * GRID_CELL_SIZE;
 
@@ -35,10 +35,17 @@ function stopTrackingTarget() {
   lastTrackedRect = null;
 }
 
-function applyForegroundVisibility(win, isTargetForeground) {
+function anyOwnWindowFocused() {
+  return (
+    (panelWindow && !panelWindow.isDestroyed() && panelWindow.isFocused()) ||
+    (gridWindow && !gridWindow.isDestroyed() && gridWindow.isFocused())
+  );
+}
+
+function applyVisibility(win, shouldShow) {
   if (!win || win.isDestroyed()) return;
 
-  if (isTargetForeground || win.isFocused()) {
+  if (shouldShow) {
     if (!win.isVisible()) win.showInactive();
   } else if (win.isVisible()) {
     win.hide();
@@ -58,9 +65,11 @@ function startTrackingTarget(handle) {
       const rect = await windowManager.getWindowRect(handle);
       if (!rect.exists) return;
 
+      const shouldShow = rect.isForeground || anyOwnWindowFocused();
+
       const pos = computePanelPosition(rect);
       panelWindow.setBounds({ x: pos.x, y: pos.y, width: PANEL_WIDTH, height: PANEL_HEIGHT });
-      applyForegroundVisibility(panelWindow, rect.isForeground);
+      applyVisibility(panelWindow, shouldShow);
 
       if (gridWindow && !gridWindow.isDestroyed()) {
         if (lastTrackedRect) {
@@ -71,7 +80,7 @@ function startTrackingTarget(handle) {
             gridWindow.setBounds({ x: bounds.x + dx, y: bounds.y + dy, width: bounds.width, height: bounds.height });
           }
         }
-        applyForegroundVisibility(gridWindow, rect.isForeground);
+        applyVisibility(gridWindow, shouldShow);
       }
 
       lastTrackedRect = rect;
