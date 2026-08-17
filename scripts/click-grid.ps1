@@ -24,6 +24,9 @@ public class ClickApi {
     [DllImport("user32.dll")]
     public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
 
+    [DllImport("user32.dll")]
+    public static extern bool SetCursorPos(int X, int Y);
+
     public struct POINT { public int X; public int Y; }
 }
 "@
@@ -39,6 +42,8 @@ for ($row = 0; $row -lt $Rows; $row++) {
         $screenX = $GridX + ($col * $CellSize) + [int]($CellSize / 2)
         $screenY = $GridY + ($row * $CellSize) + [int]($CellSize / 2)
 
+        [ClickApi]::SetCursorPos($screenX, $screenY) | Out-Null
+
         $pt = New-Object ClickApi+POINT
         $pt.X = $screenX
         $pt.Y = $screenY
@@ -48,7 +53,9 @@ for ($row = 0; $row -lt $Rows; $row++) {
         $packed = $packed -band 0xFFFFFFFF
         $lParam = [IntPtr]$packed
 
+        Start-Sleep -Milliseconds 20
         [ClickApi]::PostMessage($hwnd, $WM_LBUTTONDOWN, $MK_LBUTTON, $lParam) | Out-Null
+        Start-Sleep -Milliseconds 50
         [ClickApi]::PostMessage($hwnd, $WM_LBUTTONUP, [IntPtr]0, $lParam) | Out-Null
     }
 }
