@@ -1,7 +1,9 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const windowManager = require('./windowManager');
 
 let mainWindow;
+let selectedTarget = null;
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -16,6 +18,13 @@ function createMainWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
+
+ipcMain.handle('get-windows', () => windowManager.getVisibleWindows());
+
+ipcMain.handle('select-window', (event, win) => {
+  selectedTarget = win;
+  return selectedTarget;
+});
 
 app.whenReady().then(createMainWindow);
 

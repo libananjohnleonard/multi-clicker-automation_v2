@@ -1,1 +1,6 @@
-// Bridge for renderer <-> main IPC. Empty for now — populated as features are added.
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('api', {
+  getWindows: () => ipcRenderer.invoke('get-windows'),
+  selectWindow: (win) => ipcRenderer.invoke('select-window', win)
+});
