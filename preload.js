@@ -14,5 +14,6 @@ contextBridge.exposeInMainWorld('api', {
   addClickPoint: () => ipcRenderer.invoke('add-click-point'),
   removeClickPoint: (id) => ipcRenderer.invoke('remove-click-point', id),
   setPointTimer: (id, seconds) => ipcRenderer.invoke('set-point-timer', id, seconds),
-  onClickPointsState: (callback) => ipcRenderer.on('click-points-state', (event, points) => callback(points))
+  onClickPointsState: (callback) => ipcRenderer.on('click-points-state', (event, points) => callback(points)),
+  setIgnoreMouseEvents: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore)
 });

@@ -313,6 +313,7 @@ function createClickPointWindow(target, id) {
   });
 
   win.loadFile(path.join(__dirname, 'renderer', 'point.html'));
+  win.setIgnoreMouseEvents(true, { forward: true });
 
   const point = {
     id,
@@ -332,6 +333,13 @@ function createClickPointWindow(target, id) {
   clickPoints.push(point);
   sendClickPointsState();
 }
+
+ipcMain.on('set-ignore-mouse', (event, ignore) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    win.setIgnoreMouseEvents(ignore, { forward: true });
+  }
+});
 
 ipcMain.handle('get-windows', () => windowManager.getVisibleWindows());
 
