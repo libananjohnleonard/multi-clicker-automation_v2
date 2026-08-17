@@ -3,7 +3,7 @@ const path = require('path');
 const windowManager = require('./windowManager');
 
 const PANEL_WIDTH = 260;
-const PANEL_HEIGHT = 180;
+const PANEL_HEIGHT = 230;
 const PANEL_INSET = 20;
 const TRACK_INTERVAL_MS = 1000;
 const GRID_COLS = 14;
