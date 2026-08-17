@@ -14,12 +14,32 @@
       cursor: move;
     }
     #point {
-      width: 22px;
-      height: 22px;
+      position: relative;
+      width: 30px;
+      height: 30px;
       box-sizing: border-box;
       border: 1px solid rgba(220, 80, 80, 0.9);
       background: rgba(180, 40, 40, 0.65);
       border-radius: 3px;
+    }
+    #point::before, #point::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.9);
+    }
+    #point::before {
+      left: 50%;
+      top: 4px;
+      bottom: 4px;
+      width: 1px;
+      transform: translateX(-50%);
+    }
+    #point::after {
+      top: 50%;
+      left: 4px;
+      right: 4px;
+      height: 1px;
+      transform: translateY(-50%);
     }
   </style>
 </head>

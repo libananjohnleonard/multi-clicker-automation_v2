@@ -11,7 +11,7 @@ const GRID_ROWS = 8;
 const GRID_CELL_SIZE = 22;
 const GRID_WIDTH = GRID_COLS * GRID_CELL_SIZE;
 const GRID_HEIGHT = GRID_ROWS * GRID_CELL_SIZE;
-const POINT_SIZE = 22;
+const POINT_SIZE = 30;
 const POINT_OFFSET_STEP = 30;
 
 let mainWindow;
