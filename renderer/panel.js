@@ -8,22 +8,14 @@ const pointAddBtn = document.getElementById('point-add-btn');
 const clickPointsList = document.getElementById('click-points-list');
 const startBtn = document.getElementById('start-btn');
 const countdownDisplay = document.getElementById('countdown-display');
-const clickMethodBtn = document.getElementById('click-method-btn');
 
 let hasGrid = false;
 let isRunning = false;
-let clickMethod = 'background';
 const pointRows = new Map();
 
 function updateStartAvailability() {
   startBtn.disabled = !isRunning && !hasGrid && pointRows.size === 0;
 }
-
-clickMethodBtn.addEventListener('click', async () => {
-  const next = clickMethod === 'background' ? 'cursor' : 'background';
-  clickMethod = await window.api.setClickMethod(next);
-  clickMethodBtn.textContent = clickMethod === 'cursor' ? 'Cursor' : 'Background';
-});
 
 window.api.onTargetInfo((target) => {
   targetLabel.textContent = `${target.displayLabel || target.title} (${target.processName})`;

@@ -3,7 +3,7 @@ const path = require('path');
 const windowManager = require('./windowManager');
 
 const PANEL_WIDTH = 260;
-const PANEL_HEIGHT = 375;
+const PANEL_HEIGHT = 340;
 const PANEL_INSET = 20;
 const TRACK_INTERVAL_MS = 1000;
 const GRID_COLS = 14;
@@ -27,15 +27,6 @@ let countdownRemaining = 0;
 let isClicking = false;
 let clickPoints = [];
 let nextPointId = 1;
-let clickMethod = 'background';
-
-async function performClick(bounds, cols, rows, cellSize) {
-  if (clickMethod === 'cursor') {
-    await windowManager.clickGridCursor(bounds, cols, rows, cellSize);
-  } else {
-    await windowManager.clickGrid(selectedTarget.handle, bounds, cols, rows, cellSize);
-  }
-}
 
 function sendAutomationState() {
   if (panelWindow && !panelWindow.isDestroyed()) {
@@ -76,7 +67,7 @@ function startAutomation() {
           isClicking = true;
           const bounds = gridWindow.getBounds();
           try {
-            await performClick(bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+            await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
           } catch (error) {
             // ignore transient click errors; next cycle retries
           }
@@ -128,7 +119,7 @@ function startPointAutomation(point) {
         point.isClicking = true;
         const bounds = point.window.getBounds();
         try {
-          await performClick(bounds, 1, 1, POINT_SIZE);
+          await windowManager.clickGrid(selectedTarget.handle, bounds, 1, 1, POINT_SIZE);
         } catch (error) {
           // ignore transient click errors; next cycle retries
         }
@@ -416,13 +407,6 @@ ipcMain.handle('set-point-timer', (event, id, seconds) => {
     point.intervalSeconds = seconds;
   }
   return point ? point.intervalSeconds : null;
-});
-
-ipcMain.handle('set-click-method', (event, method) => {
-  if (method === 'background' || method === 'cursor') {
-    clickMethod = method;
-  }
-  return clickMethod;
 });
 
 app.whenReady().then(createMainWindow);
