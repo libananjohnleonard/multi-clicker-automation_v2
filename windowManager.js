@@ -5,6 +5,7 @@ const LIST_SCRIPT_PATH = path.join(__dirname, 'scripts', 'list-windows.ps1');
 const FOCUS_SCRIPT_PATH = path.join(__dirname, 'scripts', 'focus-window.ps1');
 const RECT_SCRIPT_PATH = path.join(__dirname, 'scripts', 'get-window-rect.ps1');
 const CLICK_SCRIPT_PATH = path.join(__dirname, 'scripts', 'click-grid.ps1');
+const CLICK_CURSOR_SCRIPT_PATH = path.join(__dirname, 'scripts', 'click-grid-cursor.ps1');
 const EXCLUDED_TITLES = new Set(['Multi Clicker']);
 
 function getVisibleWindows() {
@@ -132,4 +133,39 @@ function clickGrid(handle, gridBounds, cols, rows, cellSize) {
   });
 }
 
-module.exports = { getVisibleWindows, bringToForeground, getWindowRect, clickGrid };
+function clickGridCursor(gridBounds, cols, rows, cellSize) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'powershell.exe',
+      [
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CLICK_CURSOR_SCRIPT_PATH,
+        '-GridX', String(Math.round(gridBounds.x)),
+        '-GridY', String(Math.round(gridBounds.y)),
+        '-Cols', String(cols),
+        '-Rows', String(rows),
+        '-CellSize', String(cellSize)
+      ],
+      { maxBuffer: 10 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        const trimmed = stdout.trim();
+        if (!trimmed) {
+          reject(new Error('No output from click-grid-cursor.ps1'));
+          return;
+        }
+
+        try {
+          resolve(JSON.parse(trimmed));
+        } catch (parseError) {
+          reject(parseError);
+        }
+      }
+    );
+  });
+}
+
+module.exports = { getVisibleWindows, bringToForeground, getWindowRect, clickGrid, clickGridCursor };
