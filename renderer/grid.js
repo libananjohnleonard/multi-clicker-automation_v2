@@ -1,6 +1,6 @@
 const gridEl = document.getElementById('grid');
-const COLS = 14;
-const ROWS = 8;
+const COLS = 3;
+const ROWS = 5;
 
 for (let i = 0; i < COLS * ROWS; i++) {
   const cell = document.createElement('div');
