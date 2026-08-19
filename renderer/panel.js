@@ -61,7 +61,7 @@ startBtn.addEventListener('click', async () => {
 window.api.onAutomationState((state) => {
   isRunning = state.running;
   startBtn.textContent = state.running ? 'Stop' : 'Start';
-  countdownDisplay.textContent = state.running && hasGrid ? String(state.countdown) : '';
+  countdownDisplay.textContent = state.running ? String(state.countdown) : '';
   updateStartAvailability();
 });
 
@@ -76,51 +76,25 @@ window.api.onClickPointsState((points) => {
   }
 
   points.forEach((point) => {
-    let entry = pointRows.get(point.id);
+    if (pointRows.has(point.id)) return;
 
-    if (!entry) {
-      const row = document.createElement('div');
-      row.className = 'point-row';
+    const row = document.createElement('div');
+    row.className = 'point-row';
 
-      const label = document.createElement('span');
-      label.textContent = `Point ${point.id}`;
+    const label = document.createElement('span');
+    label.textContent = `Point ${point.id}`;
 
-      const timerField = document.createElement('input');
-      timerField.type = 'number';
-      timerField.min = '1';
-      timerField.className = 'point-timer-input';
-      timerField.value = point.intervalSeconds;
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'x';
+    removeBtn.addEventListener('click', async () => {
+      await window.api.removeClickPoint(point.id);
+    });
 
-      const setBtn = document.createElement('button');
-      setBtn.textContent = 'Set';
-      setBtn.addEventListener('click', async () => {
-        const seconds = parseInt(timerField.value, 10);
-        if (Number.isInteger(seconds) && seconds >= 1) {
-          await window.api.setPointTimer(point.id, seconds);
-        }
-      });
+    row.appendChild(label);
+    row.appendChild(removeBtn);
+    clickPointsList.appendChild(row);
 
-      const countdownSpan = document.createElement('span');
-      countdownSpan.className = 'point-countdown';
-
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'x';
-      removeBtn.addEventListener('click', async () => {
-        await window.api.removeClickPoint(point.id);
-      });
-
-      row.appendChild(label);
-      row.appendChild(timerField);
-      row.appendChild(setBtn);
-      row.appendChild(countdownSpan);
-      row.appendChild(removeBtn);
-      clickPointsList.appendChild(row);
-
-      entry = { el: row, countdownSpan };
-      pointRows.set(point.id, entry);
-    }
-
-    entry.countdownSpan.textContent = point.running ? String(point.countdown) : '';
+    pointRows.set(point.id, { el: row });
   });
 
   updateStartAvailability();

@@ -6,8 +6,8 @@ const PANEL_WIDTH = 260;
 const PANEL_HEIGHT = 340;
 const PANEL_INSET = 20;
 const TRACK_INTERVAL_MS = 1000;
-const GRID_COLS = 3;
-const GRID_ROWS = 5;
+const GRID_COLS = 5;
+const GRID_ROWS = 3;
 const GRID_CELL_SIZE = 22;
 const GRID_WIDTH = GRID_COLS * GRID_CELL_SIZE;
 const GRID_HEIGHT = GRID_ROWS * GRID_CELL_SIZE;
@@ -37,109 +37,91 @@ function sendAutomationState() {
   }
 }
 
+function sendClickPointsState() {
+  if (panelWindow && !panelWindow.isDestroyed()) {
+    panelWindow.webContents.send(
+      'click-points-state',
+      clickPoints.map((p) => ({ id: p.id }))
+    );
+  }
+}
+
+async function clickAllPoints() {
+  for (const point of clickPoints) {
+    if (!point.window || point.window.isDestroyed() || !selectedTarget || point.isClicking) continue;
+
+    point.isClicking = true;
+    const bounds = point.window.getBounds();
+    point.window.setIgnoreMouseEvents(true);
+    try {
+      await windowManager.clickGrid(selectedTarget.handle, bounds, 1, 1, POINT_SIZE);
+    } catch (error) {
+      console.error(`[point ${point.id} click failed]`, error);
+    } finally {
+      if (point.window && !point.window.isDestroyed()) {
+        point.window.setIgnoreMouseEvents(false);
+      }
+    }
+    point.isClicking = false;
+  }
+}
+
+async function clickTheGrid() {
+  if (!gridWindow || gridWindow.isDestroyed() || !selectedTarget || isClicking) return;
+
+  isClicking = true;
+  const bounds = gridWindow.getBounds();
+  gridWindow.setIgnoreMouseEvents(true);
+  try {
+    await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
+  } catch (error) {
+    console.error('[grid click failed]', error);
+  } finally {
+    if (gridWindow && !gridWindow.isDestroyed()) {
+      gridWindow.setIgnoreMouseEvents(false);
+    }
+  }
+  isClicking = false;
+}
+
 function stopAutomation() {
   isAutomationRunning = false;
   if (automationInterval) {
     clearInterval(automationInterval);
     automationInterval = null;
   }
-  clickPoints.forEach(stopPointAutomation);
   sendAutomationState();
-  sendClickPointsState();
 }
 
 function startAutomation() {
   if (isAutomationRunning || (!gridWindow && clickPoints.length === 0)) return;
 
   isAutomationRunning = true;
+  countdownRemaining = timerIntervalSeconds;
   sendAutomationState();
 
-  if (gridWindow) {
-    countdownRemaining = timerIntervalSeconds;
+  let isCycleActive = false;
 
-    automationInterval = setInterval(async () => {
-      countdownRemaining -= 1;
-
-      if (countdownRemaining <= 0) {
-        countdownRemaining = timerIntervalSeconds;
-
-        if (gridWindow && !gridWindow.isDestroyed() && selectedTarget && !isClicking) {
-          isClicking = true;
-          const bounds = gridWindow.getBounds();
-          gridWindow.setIgnoreMouseEvents(true);
-          try {
-            await windowManager.clickGrid(selectedTarget.handle, bounds, GRID_COLS, GRID_ROWS, GRID_CELL_SIZE);
-          } catch (error) {
-            console.error('[grid click failed]', error);
-          } finally {
-            if (gridWindow && !gridWindow.isDestroyed()) {
-              gridWindow.setIgnoreMouseEvents(false);
-            }
-          }
-          isClicking = false;
-        }
-      }
-
+  automationInterval = setInterval(async () => {
+    if (isCycleActive) {
       sendAutomationState();
-    }, 1000);
-  }
-
-  clickPoints.forEach(startPointAutomation);
-  sendClickPointsState();
-}
-
-function sendClickPointsState() {
-  if (panelWindow && !panelWindow.isDestroyed()) {
-    panelWindow.webContents.send(
-      'click-points-state',
-      clickPoints.map((p) => ({
-        id: p.id,
-        intervalSeconds: p.intervalSeconds,
-        countdown: p.countdownRemaining,
-        running: !!p.timerHandle
-      }))
-    );
-  }
-}
-
-function stopPointAutomation(point) {
-  if (point.timerHandle) {
-    clearInterval(point.timerHandle);
-    point.timerHandle = null;
-  }
-}
-
-function startPointAutomation(point) {
-  if (point.timerHandle) return;
-
-  point.countdownRemaining = point.intervalSeconds;
-
-  point.timerHandle = setInterval(async () => {
-    point.countdownRemaining -= 1;
-
-    if (point.countdownRemaining <= 0) {
-      point.countdownRemaining = point.intervalSeconds;
-
-      if (point.window && !point.window.isDestroyed() && selectedTarget && !point.isClicking) {
-        point.isClicking = true;
-        const bounds = point.window.getBounds();
-        point.window.setIgnoreMouseEvents(true);
-        console.log(`[point ${point.id} click] bounds=(${bounds.x},${bounds.y}) target center=(${Math.round(bounds.x + POINT_SIZE / 2)},${Math.round(bounds.y + POINT_SIZE / 2)})`);
-        try {
-          const result = await windowManager.clickGrid(selectedTarget.handle, bounds, 1, 1, POINT_SIZE);
-          console.log(`[point ${point.id} click] result:`, result);
-        } catch (error) {
-          console.error(`[point ${point.id} click failed]`, error);
-        } finally {
-          if (point.window && !point.window.isDestroyed()) {
-            point.window.setIgnoreMouseEvents(false);
-          }
-        }
-        point.isClicking = false;
-      }
+      return;
     }
 
-    sendClickPointsState();
+    countdownRemaining -= 1;
+
+    if (countdownRemaining <= 0) {
+      countdownRemaining = timerIntervalSeconds;
+      isCycleActive = true;
+
+      await clickAllPoints();
+      await clickTheGrid();
+      await clickAllPoints();
+
+      isCycleActive = false;
+    }
+
+    sendAutomationState();
   }, 1000);
 }
 
@@ -329,14 +311,10 @@ function createClickPointWindow(target, id) {
   const point = {
     id,
     window: win,
-    intervalSeconds: timerIntervalSeconds,
-    countdownRemaining: 0,
-    timerHandle: null,
     isClicking: false
   };
 
   win.on('closed', () => {
-    stopPointAutomation(point);
     clickPoints = clickPoints.filter((p) => p.id !== id);
     sendClickPointsState();
   });
@@ -402,7 +380,7 @@ ipcMain.handle('add-click-point', () => {
   if (selectedTarget) {
     createClickPointWindow(selectedTarget, nextPointId++);
   }
-  return clickPoints.map((p) => ({ id: p.id, intervalSeconds: p.intervalSeconds }));
+  return clickPoints.map((p) => ({ id: p.id }));
 });
 
 ipcMain.handle('remove-click-point', (event, id) => {
@@ -411,14 +389,6 @@ ipcMain.handle('remove-click-point', (event, id) => {
     point.window.close();
   }
   return true;
-});
-
-ipcMain.handle('set-point-timer', (event, id, seconds) => {
-  const point = clickPoints.find((p) => p.id === id);
-  if (point && Number.isInteger(seconds) && seconds >= 1) {
-    point.intervalSeconds = seconds;
-  }
-  return point ? point.intervalSeconds : null;
 });
 
 app.whenReady().then(createMainWindow);
