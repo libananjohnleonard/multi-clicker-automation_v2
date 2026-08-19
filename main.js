@@ -97,10 +97,16 @@ function startAutomation() {
   if (isAutomationRunning || (!gridWindow && clickPoints.length === 0)) return;
 
   isAutomationRunning = true;
-  countdownRemaining = timerIntervalSeconds;
   sendAutomationState();
 
-  let isCycleActive = false;
+  let isCycleActive = true;
+
+  (async () => {
+    await clickAllPoints();
+    countdownRemaining = timerIntervalSeconds;
+    isCycleActive = false;
+    sendAutomationState();
+  })();
 
   automationInterval = setInterval(async () => {
     if (isCycleActive) {
@@ -111,13 +117,12 @@ function startAutomation() {
     countdownRemaining -= 1;
 
     if (countdownRemaining <= 0) {
-      countdownRemaining = timerIntervalSeconds;
       isCycleActive = true;
 
-      await clickAllPoints();
       await clickTheGrid();
       await clickAllPoints();
 
+      countdownRemaining = timerIntervalSeconds;
       isCycleActive = false;
     }
 
